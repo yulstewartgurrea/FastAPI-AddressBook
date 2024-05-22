@@ -1,6 +1,11 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy.event import listen
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+from geoalchemy2 import load_spatialite
+
+import traceback
 
 from ab_app.settings import (
     SQLALCHEMY_DATABASE_URL

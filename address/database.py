@@ -17,7 +17,7 @@ class Address(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     street = Column(String, index=True)
-    city = Column(String, index=True)
+    city = Column(String, index=True)   
     state = Column(String, index=True)
     zip_code = Column(String, index=True)
     country = Column(String, index=True)
@@ -28,4 +28,3 @@ class Address(Base):
     user_id = Column(Integer, ForeignKey("user.id"))
 
     user = relationship("User", back_populates="addresses")
-

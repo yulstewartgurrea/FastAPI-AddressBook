@@ -15,5 +15,6 @@ class Address(BaseModel):
     update_at: datetime = datetime.now()
     user_id: Optional[int] = None
     
+    
     class Config:
         from_attributes = True

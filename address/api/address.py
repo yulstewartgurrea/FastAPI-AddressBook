@@ -27,6 +27,9 @@ from datetime import datetime, timedelta
 
 from typing import List
 
+from geopy.distance import geodesic
+
+
 address_router = APIRouter(
     prefix="/api/v1/address",
     tags=["Address"],
@@ -38,7 +41,7 @@ async def create_address(address: AddressModel,
                         user: dict = Depends(get_current_user), 
                         db: Session = Depends(get_db)):
     """
-    Manual registration of users on the application
+    Create addresses
     """
     try:
         address_model = AddressDatabase(**address.model_dump())
@@ -65,7 +68,7 @@ async def create_address(address: AddressModel,
 @address_router.get("/")
 async def list(user: dict = Depends(get_current_user), db: Session = Depends(get_db), ):
     """
-    Manual registration of users on the application
+    List all addresses of the user
     """
     try:
         addresses = db.query(AddressDatabase).filter(AddressDatabase.user_id==user.get("id"))
@@ -95,7 +98,7 @@ async def get(address_id: int,
             user: dict = Depends(get_current_user), 
             db: Session = Depends(get_db)):
     """
-    Manual registration of users on the application
+    Get a specific address using the id
     """
     try:
         addresses = db.query(AddressDatabase).filter(AddressDatabase.id==address_id, AddressDatabase.user_id==user.get("id")).first()
@@ -123,7 +126,7 @@ async def update(address_id: int,
                 user: dict = Depends(get_current_user), 
                 db: Session = Depends(get_db)):
     """
-    Manual registration of users on the application
+    Updates an address
     """
     try:
         response = None
@@ -159,7 +162,7 @@ async def destroy(address_id: int,
                 user: dict = Depends(get_current_user), 
                 db: Session = Depends(get_db)):
     """
-    Manual registration of users on the application
+    Deletes an address
     """
     response = None
     db_address = db.query(AddressDatabase).filter(AddressDatabase.id == address_id, AddressDatabase.user_id==user.get("id")).first()
@@ -179,6 +182,86 @@ async def destroy(address_id: int,
             'code': -1,
             'success': False,
             'msg': 'Address does not exist.'
+
+        }
+        return response
+    
+@address_router.get("/search/coordinates")
+async def search_by_coordinates(
+    longitude: float = Query(..., description="Longitude of the search center"),
+    latitude: float = Query(..., description="Latitude of the search center"),
+    user: dict = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """
+    Get specific address using coordinates
+    """
+    try:
+        addresses = db.query(AddressDatabase).filter(
+            AddressDatabase.user_id==user.get("id"),
+            AddressDatabase.longitude==longitude,
+            AddressDatabase.latitude==latitude
+        )
+        address_list = [{"street": addr.street, "city": addr.city, "state": addr.state, 
+                        "zip_code": addr.zip_code, "country": addr.country,
+                        "longitude": addr.longitude, "latitude": addr.latitude, "user_id": addr.user_id} 
+                        for addr in addresses]
+        response = {
+            'code': 1,
+            'success': True,
+            'msg': 'Success.',
+            'data': address_list
+
+        }
+        return response
+    except Exception as e:
+        response = {
+            'code': -1,
+            'success': False,
+            'msg': 'Something went wrong.'
+
+        }
+        return response
+    
+@address_router.get("/search/nearby")
+async def search_nearby(
+    current_longitude: float = Query(..., description="Longitude of the search center"),
+    current_latitude: float = Query(..., description="Latitude of the search center"),
+    max_distance: float = Query(default=5, description="Maximum distance from the point in miles"),
+    user: dict = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """
+    Get specific address using coordinates
+    """
+    try:
+        nearby_addresses = []
+        addresses = db.query(AddressDatabase).filter(
+            AddressDatabase.user_id==user.get("id")
+        )
+        for address in addresses:
+            # Check for valid coordinates in the database entries
+            if (address.latitude and address.longitude and 
+                not (address.latitude == current_latitude and address.longitude == current_longitude)):
+                address_coords = (address.latitude, address.longitude)
+                current_coords = (current_latitude, current_longitude)
+                distance = geodesic(address_coords, current_coords).miles
+                if distance <= int(max_distance):
+                    nearby_addresses.append(address)
+                    
+        response = {
+            'code': 1,
+            'success': True,
+            'msg': 'Success.',
+            'data': nearby_addresses
+
+        }
+        return response
+    except Exception as e:
+        response = {
+            'code': -1,
+            'success': False,
+            'msg': 'Something went wrong.'
 
         }
         return response
